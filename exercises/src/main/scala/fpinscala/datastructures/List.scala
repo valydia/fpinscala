@@ -1,5 +1,7 @@
 package fpinscala.datastructures
 
+import fpinscala.gettingstarted.MyModule.fib
+
 sealed trait List[+A] // `List` data type, parameterized on a type, `A`
 case object Nil extends List[Nothing] // A `List` data constructor representing the empty list
 /* Another data constructor, representing nonempty lists. Note that `tail` is another `List[A]`,
@@ -23,7 +25,7 @@ object List { // `List` companion object. Contains functions for creating and wo
     if (as.isEmpty) Nil
     else Cons(as.head, apply(as.tail: _*))
 
-  val x = List(1,2,3,4,5) match {
+  val value = List(1,2,3,4,5) match {
     case Cons(x, Cons(2, Cons(4, _))) => x
     case Nil => 42
     case Cons(x, Cons(y, Cons(3, Cons(4, _)))) => x + y
@@ -43,26 +45,72 @@ object List { // `List` companion object. Contains functions for creating and wo
       case Cons(x, xs) => f(x, foldRight(xs, z)(f))
     }
 
-  def sum2(ns: List[Int]) =
+  def sum2(ns: List[Int]): Int =
     foldRight(ns, 0)((x,y) => x + y)
 
-  def product2(ns: List[Double]) =
+  def product2(ns: List[Double]): Double =
     foldRight(ns, 1.0)(_ * _) // `_ * _` is more concise notation for `(x,y) => x * y`; see sidebar
 
 
-  def tail[A](l: List[A]): List[A] = ???
+  def tail[A](l: List[A]): List[A] =
+    l match {
+      case Nil => throw new NoSuchElementException
+      case Cons(_, tail) => tail
+    }
 
-  def setHead[A](l: List[A], h: A): List[A] = ???
+  def setHead[A](l: List[A], h: A): List[A] =
+    l match {
+      case Nil => throw new NoSuchElementException
+      case Cons(_, tail) => Cons(h,tail)
+    }
 
-  def drop[A](l: List[A], n: Int): List[A] = ???
+  def drop[A](l: List[A], n: Int): List[A] =
+    (l,n) match {
+      case (_, 0) => l
+      case (Nil, _) => Nil
+      case (Cons(h, tail), _) => drop(tail, n - 1)
+    }
 
-  def dropWhile[A](l: List[A], f: A => Boolean): List[A] = ???
+  def dropWhile[A](l: List[A], f: A => Boolean): List[A] =
+    l match {
+      case Nil => Nil
+      case Cons(h,t) => if (f(h)) dropWhile(t,f) else t
+    }
 
-  def init[A](l: List[A]): List[A] = ???
+  def init[A](l: List[A]): List[A] =
+    l match {
+      case Nil => throw new NoSuchElementException
+      case Cons(_, Nil) => Nil
+      case Cons(x1, Cons(x2, xs)) => Cons(x1, Cons(x2, init(xs)))
+    }
 
-  def length[A](l: List[A]): Int = ???
+  def length[A](l: List[A]): Int =
+    foldRight(l,0)((_, acc) => acc + 1)
 
-  def foldLeft[A,B](l: List[A], z: B)(f: (B, A) => B): B = ???
+  def foldLeft[A,B](l: List[A], z: B)(f: (B, A) => B): B =
+    l match {
+      case Nil => z
+      case Cons(h, tail) => foldLeft(tail,f(z,h))(f)
+    }
 
-  def map[A,B](l: List[A])(f: A => B): List[B] = ???
+  def map[A,B](l: List[A])(f: A => B): List[B] =
+    foldRight(l, List[B]())((a,b) => Cons(f(a), b))
+
+  def reverse[A](l: List[A]): List[A] =
+    foldLeft(l, Nil:List[A])((a,b) => Cons(b,a))
+
+  def append[A](l1: List[A], l2: List[A]): List[A] =
+    ???
+
+
+  def main(args: Array[String]): Unit = {
+
+    val list = List(1,2,3,4,5)
+//        println(s"Working with list ${list}")
+//    println(s"tail -- ${tail(list)}")
+//    println(s"setHead -- ${setHead(list, 10)}")
+//    println(foldRight(List(1,2,3), Nil:List[Int])(Cons(_,_)))
+    println(reverse(list))
+  }
+
 }
