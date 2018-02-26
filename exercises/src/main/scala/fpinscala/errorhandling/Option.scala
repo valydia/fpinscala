@@ -17,22 +17,14 @@ sealed trait Option[+A] {
     }
 
   def flatMap[B](f: A => Option[B]): Option[B] =
-    this match {
-      case None => None
-      case Some(a) => f(a)
-    }
+    map(f).getOrElse(None)
+
 
   def orElse[B>:A](ob: => Option[B]): Option[B] =
-    this match {
-      case None => ob
-      case Some(a) => Some(a)
-    }
+    map(Some.apply).getOrElse(ob)
 
   def filter(f: A => Boolean): Option[A] =
-    this match {
-      case Some(a) if f(a) => Some(a)
-      case _ => None
-    }
+    flatMap(a => if (f(a)) Some(a) else None)
 }
 case class Some[+A](get: A) extends Option[A]
 case object None extends Option[Nothing]
@@ -58,7 +50,11 @@ object Option {
   def mean(xs: Seq[Double]): Option[Double] =
     if (xs.isEmpty) None
     else Some(xs.sum / xs.length)
-  def variance(xs: Seq[Double]): Option[Double] = ???
+
+  def variance(xs: Seq[Double]): Option[Double] =
+    mean(xs) flatMap { m =>
+      mean(xs.map(x => math.pow(x - m, 2)))
+    }
 
   def map2[A,B,C](a: Option[A], b: Option[B])(f: (A, B) => C): Option[C] =
     for {
@@ -69,12 +65,31 @@ object Option {
   def sequence[A](a: List[Option[A]]): Option[List[A]] = {
       def loop(l: List[Option[A]], acc: List[A]): Option[List[A]] =
         l match {
-          case Nil => Some(acc)
+          case Nil => Some(acc.reverse)
           case Some(aa) :: t => loop(t, aa :: acc)
-          case None :: t => None
+          case _ => None
         }
     loop(a, Nil)
   }
 
-  def traverse[A, B](a: List[A])(f: A => Option[B]): Option[List[B]] = ???
+  def traverse[A, B](a: List[A])(f: A => Option[B]): Option[List[B]] = {
+    def loop(l: List[A], acc: List[B]): Option[List[B]] =
+      l match {
+        case Nil => Some(acc.reverse)
+        case aa :: t =>
+          f(aa) match {
+            case None => None
+            case Some(b) => loop(t, b :: acc)
+          }
+      }
+    loop(a, List())
+  }
+
+  def sequence2[A](a: List[Option[A]]): Option[List[A]] =
+    traverse(a)(identity)
+
+  def main(args: Array[String]): Unit = {
+    val listOption = List(Some(1), Some(2), Some(3), Some(4))
+    println(sequence(listOption))
+  }
 }

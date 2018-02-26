@@ -2,6 +2,8 @@ package fpinscala.datastructures
 
 import fpinscala.gettingstarted.MyModule.fib
 
+import scala.annotation.tailrec
+
 sealed trait List[+A] // `List` data type, parameterized on a type, `A`
 case object Nil extends List[Nothing] // A `List` data constructor representing the empty list
 /* Another data constructor, representing nonempty lists. Note that `tail` is another `List[A]`,
@@ -25,7 +27,7 @@ object List { // `List` companion object. Contains functions for creating and wo
     if (as.isEmpty) Nil
     else Cons(as.head, apply(as.tail: _*))
 
-  val value = List(1,2,3,4,5) match {
+  val value: Int = List(1,2,3,4,5) match {
     case Cons(x, Cons(2, Cons(4, _))) => x
     case Nil => 42
     case Cons(x, Cons(y, Cons(3, Cons(4, _)))) => x + y
@@ -68,13 +70,13 @@ object List { // `List` companion object. Contains functions for creating and wo
     (l,n) match {
       case (_, 0) => l
       case (Nil, _) => Nil
-      case (Cons(h, tail), _) => drop(tail, n - 1)
+      case (Cons(_, tail), _) => drop(tail, n - 1)
     }
 
   def dropWhile[A](l: List[A], f: A => Boolean): List[A] =
     l match {
-      case Nil => Nil
       case Cons(h,t) => if (f(h)) dropWhile(t,f) else t
+      case _ => l
     }
 
   def init[A](l: List[A]): List[A] =
@@ -93,14 +95,81 @@ object List { // `List` companion object. Contains functions for creating and wo
       case Cons(h, tail) => foldLeft(tail,f(z,h))(f)
     }
 
-  def map[A,B](l: List[A])(f: A => B): List[B] =
+  def map[A,B](l: List[A])(f: A => B): List[B] = {
+     def loop(l: List[A], acc: List[B]): List[B] = l match {
+       case Nil => reverse(acc)
+       case Cons(h,t) => loop(t, Cons(f(h),acc))
+     }
+    loop(l, List())
+  }
+
+
+  def map2[A,B](l: List[A])(f: A => B): List[B] =
     foldRight(l, List[B]())((a,b) => Cons(f(a), b))
+
+  def filter[A](l: List[A])(p: A => Boolean): List[A] = {
+    def loop(l: List[A], acc: List[A]): List[A] = l match {
+      case Nil => reverse(acc)
+      case Cons(h,t) => loop(t, if (p(h)) Cons(h,acc) else acc)
+    }
+    loop(l, List())
+  }
+
+  def filter2[A](l: List[A])(p: A => Boolean): List[A] =
+    flatMap(l)(a => if (p(a)) List(a) else List())
+
+  def flatMap[A,B](as: List[A])(f: A => List[B]): List[B] = {
+    def loop(l: List[A], acc: List[B]): List[B] = l match {
+      case Nil => reverse(acc)
+      case Cons(h,t) => loop(t, append(f(h),acc))
+    }
+    loop(as, List())
+  }
 
   def reverse[A](l: List[A]): List[A] =
     foldLeft(l, Nil:List[A])((a,b) => Cons(b,a))
 
-  def append[A](l1: List[A], l2: List[A]): List[A] =
-    ???
+  def append2[A](l1: List[A], l2: List[A]): List[A] =
+    foldRight(l1,l2){(elem,acc) =>
+      Cons(elem,acc)
+    }
+
+  def flatten[A](list: List[List[A]]): List[A] =
+    foldRight(list, List[A]()){ (subList, acc) =>
+      append(subList, acc)
+    }
+
+  def addOne(l: List[Int]): List[Int] = map(l)(_ + 1)
+  def toString(l: List[Double]): List[String] = map(l)(_.toString)
+
+  def zipWith[A,B,C](l1: List[A], l2: List[B])(f: (A,B) => C): List[C] = {
+    def loop(l1: List[A],l2: List[B], acc: List[C]): List[C] = (l1,l2) match {
+      case (Nil,_) => reverse(acc)
+      case (_, Nil) => reverse(acc)
+      case (Cons(h1,t1), Cons(h2,t2)) => loop(t1,t2,Cons(f(h1,h2), acc))
+    }
+    loop(l1,l2, List())
+  }
+
+  def startWiths[A](l: List[A], prefix: List[A]): Boolean = {
+    @tailrec
+    def loop(l: List[A], p: List[A]): Boolean =
+      (l,p) match {
+        case (_, Nil) => true
+        case (Nil, _) => false
+        case (Cons(h1,t1), Cons(h2,t2)) => if (h1 == h2) loop(t1,t2) else false
+      }
+
+
+    loop(l,prefix)
+  }
+  def hasSubsequence[A](sup: List[A], sub: List[A]): Boolean = {
+    def loop(l: List[A]): Boolean = l match {
+      case Nil => false
+      case Cons(_,t) => if (startWiths(l,sub)) true else loop(t)
+    }
+    loop(sup)
+  }
 
 
   def main(args: Array[String]): Unit = {
@@ -110,7 +179,17 @@ object List { // `List` companion object. Contains functions for creating and wo
 //    println(s"tail -- ${tail(list)}")
 //    println(s"setHead -- ${setHead(list, 10)}")
 //    println(foldRight(List(1,2,3), Nil:List[Int])(Cons(_,_)))
-    println(reverse(list))
+//    println(reverse(list))
+
+//    println(append2(list, List(6,7,8,9,10)))
+//    println(flatten(List(List(1,2,3,4),List(5,6,7), List(8,9,10))))
+//    println(filter2(list)(_ % 2 == 0))
+//    println(flatMap(List(1,2,3))(i => List(i,i)))
+//    println(zipWith(List(1,2,3), List(4,5,6))(_ + _))
+    println(hasSubsequence(List(1,2,3,4), List(1,2)))
+    println(hasSubsequence(List(1,2,3,4), List(2,3)))
+    println(hasSubsequence(List(1,2,3,4), List(4)))
+    println(hasSubsequence(List(1,2,3,4), List(3,2)))
   }
 
 }
