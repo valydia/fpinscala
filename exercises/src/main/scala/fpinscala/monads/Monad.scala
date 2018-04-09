@@ -36,7 +36,18 @@ trait Monad[M[_]] extends Functor[M] {
   def map2[A,B,C](ma: M[A], mb: M[B])(f: (A, B) => C): M[C] =
     flatMap(ma)(a => map(mb)(b => f(a, b)))
 
-  def sequence[A](lma: List[M[A]]): M[List[A]] = ???
+  def sequence[A](lma: List[M[A]]): M[List[A]] = {
+
+    def loop(l: List[M[A]], acc: List[A]): List[A] =
+      l match {
+        case Nil => acc.reverse
+        case ma :: tail =>
+          for {
+            a <- ma
+          } yield loop(tail, a :: acc)
+      }
+      unit(loop(lma, List[A]()))
+  }
 
   def traverse[A,B](la: List[A])(f: A => M[B]): M[List[B]] = ???
 
@@ -62,15 +73,36 @@ object Monad {
       ma flatMap f
   }
 
-  val parMonad: Monad[Par] = ???
+  val parMonad: Monad[Par] = new Monad[Par] {
+    def flatMap[A, B](par: Par[A])(f: A => Par[B]): Par[B] = ???
+
+    def unit[A](a: => A): Par[A] = ???
+  }
 
   def parserMonad[P[+_]](p: Parsers[P]): Monad[P] = ???
 
-  val optionMonad: Monad[Option] = ???
+  val optionMonad: Monad[Option] = new Monad[Option] {
+    def flatMap[A, B](o: Option[A])(f: A => Option[B]): Option[B] =
+      o.flatMap(f)
 
-  val streamMonad: Monad[Stream] = ???
+    def unit[A](a: => A): Option[A] = Some(a)
+  }
 
-  val listMonad: Monad[List] = ???
+  val streamMonad: Monad[Stream] =
+    new Monad[Stream] {
+      def flatMap[A, B](stream: Stream[A])(f: A => Stream[B]): Stream[B] =
+        stream.flatMap(f)
+
+      def unit[A](a: => A): Stream[A] = Stream(a)
+    }
+
+  val listMonad: Monad[List] =
+    new Monad[List] {
+      def flatMap[A, B](l: List[A])(f: A => List[B]): List[B] =
+        l.flatMap(f)
+
+      def unit[A](a: => A): List[A] = List(a)
+    }
 
   def stateMonad[S] = ???
 
